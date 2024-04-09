@@ -92,7 +92,7 @@ func customError(w http.ResponseWriter, error string, code int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-	w.Header().Set("Content-Security-Policy", "default-src https:")
+	w.Header().Set("Content-Security-Policy", "default-src *")
 	w.WriteHeader(code)
 	fmt.Fprintln(w, error)
 }
