@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -12,6 +14,15 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 )
+
+// ErrPageNameNotSpecified is thrown if the name of the landing page is blank.
+var ErrPageNameNotSpecified = errors.New("Page Name not specified")
+
+// ErrRedirectUrlNotSpecified is thrown if redirect url is blank.
+var ErrRedirectUrlNotSpecified = errors.New("Redirect url not specified when HTTP Basic Auth is enabled")
+
+// ErrRedirectUrl is thrown if redirect url is blank.
+var ErrRedirectUrl = errors.New("Redirect url not formatted properly")
 
 // Pages handles requests for the /api/pages/ endpoint
 func (as *Server) Pages(w http.ResponseWriter, r *http.Request) {
@@ -29,6 +40,10 @@ func (as *Server) Pages(w http.ResponseWriter, r *http.Request) {
 		err := json.NewDecoder(r.Body).Decode(&p)
 		if err != nil {
 			JSONResponse(w, models.Response{Success: false, Message: "Invalid request"}, http.StatusBadRequest)
+			return
+		}
+		if err := validatePage(p); err != nil {
+			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 			return
 		}
 		// Check to make sure the name is unique
@@ -74,9 +89,15 @@ func (as *Server) Page(w http.ResponseWriter, r *http.Request) {
 		err = json.NewDecoder(r.Body).Decode(&p)
 		if err != nil {
 			log.Error(err)
+			JSONResponse(w, models.Response{Success: false, Message: "Invalid request"}, http.StatusBadRequest)
+			return
 		}
 		if p.Id != id {
 			JSONResponse(w, models.Response{Success: false, Message: "/:id and /:page_id mismatch"}, http.StatusBadRequest)
+			return
+		}
+		if err := validatePage(p); err != nil {
+			JSONResponse(w, models.Response{Success: false, Message: err.Error()}, http.StatusBadRequest)
 			return
 		}
 		p.ModifiedDate = time.Now().UTC()
@@ -88,4 +109,30 @@ func (as *Server) Page(w http.ResponseWriter, r *http.Request) {
 		}
 		JSONResponse(w, p, http.StatusOK)
 	}
+}
+
+// validate ensures that a page contains the appropriate details
+func validatePage(p models.Page) error {
+	// check to make sure the redirect url is formatted properly
+	if _, err := url.ParseRequestURI(p.RedirectURL); p.RedirectURL != "" && err != nil {
+		return ErrRedirectUrl
+	}
+	switch {
+	case p.Name == "":
+		return ErrPageNameNotSpecified
+	case (p.RedirectURL == "") && (p.EnableHTTPBasicAuth):
+		return ErrRedirectUrlNotSpecified
+
+	}
+	// If the user specifies to capture passwords,
+	// we automatically capture credentials
+	if p.CapturePasswords && !p.CaptureCredentials {
+		p.CaptureCredentials = true
+	}
+	// If the user specifies to enable basic authentication,
+	// we automatically capture credentials
+	if p.EnableHTTPBasicAuth && !p.CaptureCredentials {
+		p.CaptureCredentials = true
+	}
+	return nil
 }

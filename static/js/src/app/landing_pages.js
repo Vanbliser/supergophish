@@ -1,7 +1,7 @@
 /*
 	landing_pages.js
 	Handles the creation, editing, and deletion of landing pages
-	Author: Jordan Wright <github.com/jordan-wright>
+	Author: Jordan Wright <github.com/jordan-wright>, and Blossom Ayogu <github.com/Vanbliser>
 */
 var pages = []
 
@@ -14,6 +14,7 @@ function save(idx) {
     page.html = editor.getData()
     page.capture_credentials = $("#capture_credentials_checkbox").prop("checked")
     page.capture_passwords = $("#capture_passwords_checkbox").prop("checked")
+    page.enable_http_basic_auth = $("#enable_http_basic_auth_checkbox").prop("checked")
     page.redirect_url = $("#redirect_url_input").val()
     if (idx != -1) {
         page.id = pages[idx].id
@@ -22,6 +23,9 @@ function save(idx) {
                 successFlash("Page edited successfully!")
                 load()
                 dismiss()
+            })
+            .error(function (data){
+                modalError(data.responseJSON.message)
             })
     } else {
         // Submit the page
@@ -44,8 +48,8 @@ function dismiss() {
     $("#url").val("")
     $("#redirect_url_input").val("")
     $("#modal").find("input[type='checkbox']").prop("checked", false)
+    $("#enable_http_basic_auth").hide()
     $("#capture_passwords").hide()
-    $("#redirect_url").hide()
     $("#modal").modal('hide')
 }
 
@@ -120,12 +124,15 @@ function edit(idx) {
         $("#capture_credentials_checkbox").prop("checked", page.capture_credentials)
         $("#capture_passwords_checkbox").prop("checked", page.capture_passwords)
         $("#redirect_url_input").val(page.redirect_url)
+        $("#enable_http_basic_auth_checkbox").prop("checked", page.enable_http_basic_auth)
+        $("#enable_http_basic_auth").hide()
         if (page.capture_credentials) {
+            $("#enable_http_basic_auth").show()
             $("#capture_passwords").show()
-            $("#redirect_url").show()
         }
     } else {
         $("#modalLabel").text("New Landing Page")
+        $("#enable_http_basic_auth").hide()
     }
 }
 
@@ -235,8 +242,12 @@ $(document).ready(function () {
         dismiss()
     });
     $("#capture_credentials_checkbox").change(function () {
+        $("#enable_http_basic_auth").toggle()
         $("#capture_passwords").toggle()
-        $("#redirect_url").toggle()
+        if (!$(this).prop("checked")) {
+            $("#capture_passwords_checkbox").prop("checked", false)
+            $("#enable_http_basic_auth_checkbox").prop("checked", false)
+        }
     })
     CKEDITOR.on('dialogDefinition', function (ev) {
         // Take the dialog name and its definition from the event data.
@@ -253,6 +264,5 @@ $(document).ready(function () {
             infoTab.get('linkType').hidden = true;
         }
     });
-
     load()
 })

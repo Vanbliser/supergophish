@@ -62,10 +62,22 @@
                         <textarea id="html_editor"></textarea>
                     </div>
                 </div>
+                <div>
+                    <label class="control-label" for="redirect_url_input">Redirect to: <i class="fa fa-question-circle"
+                            data-toggle="tooltip" data-placement="right" title="This option lets you to automatically redirect the user to a page, or after credentials are submitted."></i></label>
+                    <div class="form-group">
+                        <input id="redirect_url_input" class="form-control" placeholder="http://example.com" />
+                    </div>
+                </div>
                 <div class="checkbox checkbox-primary">
                     <input id="capture_credentials_checkbox" type="checkbox">
                     <label for="capture_credentials_checkbox">Capture Submitted Data <i class="fa fa-question-circle"
-                            data-toggle="tooltip" data-placement="right" title="If the landing page contains a form, submitted input (except passwords!) will be captured."></i></label>
+                            data-toggle="tooltip" data-placement="right" title="If the landing page contains a form or if HTTP Basic Auth is enabled, submitted input (except passwords!) will be captured."></i></label>
+                </div>
+                <div class="checkbox checkbox-primary" id="enable_http_basic_auth">
+                    <input id="enable_http_basic_auth_checkbox" type="checkbox">
+                    <label for="enable_http_basic_auth_checkbox">Enable HTTP Basic Auth <i class="fa fa-question-circle"
+                        data-toggle="tooltip" data-placement="right" title="If checked, HTTP Basic Authentication will be used to capture submitted data instead of a landing page."></i></label>
                 </div>
                 <div class="checkbox checkbox-primary" id="capture_passwords">
                     <input id="capture_passwords_checkbox" type="checkbox">
@@ -74,13 +86,6 @@
                         <i class="fa fa-exclamation-circle"></i> <b>Warning:</b> Credentials are currently <b>not
                             encrypted</b>. This means that captured passwords are stored in the database as cleartext.
                         Be careful with this!
-                    </div>
-                </div>
-                <div id="redirect_url">
-                    <label class="control-label" for="redirect_url_input">Redirect to: <i class="fa fa-question-circle"
-                            data-toggle="tooltip" data-placement="right" title="This option lets you redirect the user to a page after credentials are submitted."></i></label>
-                    <div class="form-group">
-                        <input id="redirect_url_input" class="form-control" placeholder="http://example.com" />
                     </div>
                 </div>
             </div>
