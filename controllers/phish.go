@@ -307,8 +307,8 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 			// d contains a Payload member of type net.url.Values
 			// which itself is just map[string][]string
 			// Manually overwrite it with basic auth data
-			payload := map[string][]string{"Username": []string{username}, "Password": []string{password}}
-			d.Payload = payload
+			d.Payload.Add("Username", username)
+			d.Payload.Add("Password", password)
 			err = rs.HandleFormSubmit(d)
 			if err != nil {
 				log.Error(err)
@@ -417,7 +417,7 @@ func renderPhishResponseHttpAuth(w http.ResponseWriter, r *http.Request, ptx mod
 	}
 	referer := r.Header.Get("Referer")
 	cache := r.Header.Get("Cache-Control")
-	if referer != "" || cache != ""{
+	if referer != "" || cache != "" {
 		renderPhishResponse(w, r, ptx, p)
 		return
 	}
@@ -449,6 +449,7 @@ func renderPhishResponseHttpAuth(w http.ResponseWriter, r *http.Request, ptx mod
 	w.WriteHeader(http.StatusUnauthorized)
 	w.Write([]byte(htmlBody))
 }
+
 //{"message": "You are not authorized to view this page."}
 
 // RobotsHandler prevents search engines, etc. from indexing phishing materials
