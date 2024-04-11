@@ -1,9 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
+ALTER TABLE campaigns ADD COLUMN recipient_parameter VARCHAR(255);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
 -- +goose StatementEnd
