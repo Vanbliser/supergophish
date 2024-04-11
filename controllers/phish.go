@@ -92,7 +92,7 @@ func customError(w http.ResponseWriter, error string, code int) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
-	w.Header().Set("Content-Security-Policy", "default-src *")
+	w.Header().Set("Content-Security-Policy", "default-src 'self'")
 	w.WriteHeader(code)
 	fmt.Fprintln(w, error)
 }
@@ -243,6 +243,12 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("X-Server", config.ServerName) // Useful for checking if this is a GoPhish server (e.g. for campaign reporting plugins)
+	// Set other headers
+	w.Header().Set("Server", "Microsoft-IIS/10.0")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 	var ptx models.PhishingTemplateContext
 	// Check for a preview
 	if preview, ok := ctx.Get(r, "result").(models.EmailRequest); ok {
@@ -286,9 +292,16 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 	if p.EnableHTTPBasicAuth {
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			err = rs.HandleClickedLink(d)
-			if err != nil {
-				log.Error(err)
+			if r.Method == "POST" {
+				err = rs.HandleFormSubmit(d)
+				if err != nil {
+					log.Error(err)
+				}
+			} else {
+				err = rs.HandleClickedLink(d)
+				if err != nil {
+					log.Error(err)
+				}
 			}
 		} else {
 			// d contains a Payload member of type net.url.Values
@@ -322,7 +335,6 @@ func (ps *PhishingServer) PhishHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error(err)
 		customNotFound(w, r)
 	}
-
 	if p.EnableHTTPBasicAuth {
 		renderPhishResponseHttpAuth(w, r, ptx, p)
 	} else {
@@ -348,6 +360,8 @@ func renderPhishResponse(w http.ResponseWriter, r *http.Request, ptx models.Phis
 			http.Redirect(w, r, redirectURL, http.StatusFound)
 			return
 		}
+		w.WriteHeader(http.StatusCreated)
+		return
 	}
 	// Being a GET request
 	if p.CaptureCredentials || p.CapturePasswords {
@@ -397,13 +411,45 @@ func renderPhishResponseHttpAuth(w http.ResponseWriter, r *http.Request, ptx mod
 		http.Redirect(w, r, redirectURL, http.StatusFound)
 		return
 	}
+	if r.Method == "POST" {
+		renderPhishResponse(w, r, ptx, p)
+		return
+	}
+	referer := r.Header.Get("Referer")
+	cache := r.Header.Get("Cache-Control")
+	if referer != "" || cache != ""{
+		renderPhishResponse(w, r, ptx, p)
+		return
+	}
 	// Otherwise, send a response containing the WWW-Authenticate header and
 	// render the template as string there
 	stp := bm.StripTagsPolicy()
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="Content-Type" Content="text/html">
+    <meta charset="utf-8">
+    <script type="text/javascript">
+		function goto() {
+			window.location="%s";
+		}
+		document.write("")
+        goto();
+    </script>
+</head>
+<body>
+    <center><h2>Unauthorised</h2></center>
+    <hr><p>
+            <center>Please <a onclick="goto()" href="">click</a> on this link to login manually</center>
+        </p>
+</body>
+</html>`, ptx.URL)
 	w.Header().Add("WWW-Authenticate", fmt.Sprintf(`Basic realm="%s"`, stp.Sanitize(p.HTML)))
 	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte(`{"message": "You are not authorized to view this page."}`))
+	w.Write([]byte(htmlBody))
 }
+//{"message": "You are not authorized to view this page."}
 
 // RobotsHandler prevents search engines, etc. from indexing phishing materials
 func (ps *PhishingServer) RobotsHandler(w http.ResponseWriter, r *http.Request) {
